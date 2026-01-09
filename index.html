@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIDDO - Gemini 3 დღიური</title>
+    <title>KIDDO - Gemini 3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #fdf6e3; font-family: sans-serif; }
@@ -19,7 +19,7 @@
             <div class="bg-orange-100 p-3 rounded-2xl text-2xl shadow-sm">📖</div>
             <div>
                 <h1 class="text-2xl font-bold text-orange-900 tracking-tight">KIDDO</h1>
-                <p class="text-xs text-orange-600 font-medium italic">შენი შვილის ისტორია • Gemini 3 Flash</p>
+                <p class="text-xs text-orange-600 font-medium italic">Gemini 3 Flash Preview</p>
             </div>
         </div>
 
@@ -27,7 +27,7 @@
             <textarea id="userNote" class="w-full border-none focus:ring-0 text-xl placeholder-orange-200 h-28 outline-none bg-transparent resize-none" placeholder="აღწერე ეს წამი მოკლედ..."></textarea>
             
             <div id="imagePreview" class="hidden mb-4 relative">
-                <button onclick="clearImage()" class="absolute top-2 right-2 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm">✕</button>
+                <button onclick="clearImage()" class="absolute top-2 right-2 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center">✕</button>
                 <img id="previewImg" src="" alt="preview">
             </div>
 
@@ -73,14 +73,14 @@
             const btnText = document.getElementById('btnText');
             const loader = document.getElementById('loader');
 
-            if (!note && !selectedImageBase64) return alert("დაწერე რამე ან ატვირთე ფოტო!");
+            if (!note && !selectedImageBase64) return;
 
             btnText.innerText = 'Gemini 3 ფიქრობს...';
             loader.style.display = 'block';
 
             try {
-                // აქ ვიყენებთ Gemini 3 Flash მოდელს და v1 API-ს
-                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3-flash:generateContent?key=${MY_API_KEY}`;
+                // მოდელის სახელი შეიცვალა gemini-3-flash-preview-ზე
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${MY_API_KEY}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -88,23 +88,20 @@
                     body: JSON.stringify({
                         contents: [{ 
                             parts: [{ 
-                                text: `შენ ხარ ემოციური დღიურის ასისტენტი. მომხმარებელი გიწერს მოკლე ფრაზას შვილის შესახებ. გადააქციე ის თბილ, ლიტერატურულ ისტორიად ქართულ ენაზე (მაქსიმუმ 3 წინადადება). ფრაზა: "${note}"` 
+                                text: `შენ ხარ KIDDO ასისტენტი. გადააქციე ეს ფრაზა თბილ მოგონებად ქართულ ენაზე: "${note}"` 
                             }] 
                         }]
                     })
                 });
 
                 const data = await response.json();
-                
-                // თუ Gemini 3 ჯერ არ არის ხელმისაწვდომი შენს რეგიონში, ავტომატურად გადავა 1.5-ზე
-                if (data.error && data.error.status === "NOT_FOUND") {
-                    console.log("Gemini 3 not found, switching to 1.5 Flash...");
-                    return fallbackTo15(note);
-                }
+                if (data.error) throw new Error(data.error.message);
 
                 const aiStory = data.candidates[0].content.parts[0].text;
                 addStoryToUI(aiStory, selectedImageBase64);
-                resetUI();
+                
+                document.getElementById('userNote').value = '';
+                clearImage();
             } catch (error) {
                 alert("შეცდომა: " + error.message);
             } finally {
@@ -113,35 +110,16 @@
             }
         }
 
-        async function fallbackTo15(note) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${MY_API_KEY}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: `გადააქციე ეს ფრაზა თბილ ისტორიად ქართულად: "${note}"` }] }]
-                })
-            });
-            const data = await response.json();
-            addStoryToUI(data.candidates[0].content.parts[0].text, selectedImageBase64);
-            resetUI();
-        }
-
-        function resetUI() {
-            document.getElementById('userNote').value = '';
-            clearImage();
-        }
-
         function addStoryToUI(story, image) {
             const timeline = document.getElementById('timeline');
-            const date = new Date().toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' });
-            const imageHtml = image ? `<img src="${image}" class="w-full h-56 object-cover rounded-xl mb-4 shadow-sm">` : '';
+            const date = new Date().toLocaleDateString('ka-GE');
+            const imgTag = image ? `<img src="${image}" class="w-full h-56 object-cover rounded-xl mb-4 shadow-sm">` : '';
             
             const html = `
-                <div class="page-card p-6 border-l-8 border-pink-400 mb-6 transition-all duration-500">
-                    <div class="mb-3 text-[10px] font-bold text-orange-400 uppercase tracking-widest">${date}</div>
-                    ${imageHtml}
-                    <p class="text-orange-950 font-serif text-lg leading-relaxed font-medium">${story}</p>
+                <div class="page-card p-6 border-l-8 border-pink-400 mb-6">
+                    <p class="text-[10px] font-bold text-orange-400 mb-2 uppercase">${date}</p>
+                    ${imgTag}
+                    <p class="text-orange-950 font-serif text-lg leading-relaxed">${story}</p>
                 </div>
             `;
             timeline.insertAdjacentHTML('afterbegin', html);
