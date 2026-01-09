@@ -6,75 +6,76 @@
     <title>KIDDO - Gemini 3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #fdfaf3; font-family: sans-serif; }
-        .card { background: white; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.03); }
-        .loader { border: 2px solid #f3f3f3; border-radius: 50%; border-top: 2px solid #fb923c; width: 18px; height: 18px; animation: spin 1s linear infinite; display: inline-block; }
+        body { background-color: #fdfaf3; }
+        .card { background: white; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+        .loader { border: 2px solid #f3f3f3; border-radius: 50%; border-top: 2px solid #fb923c; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="p-4 md:p-10">
+<body class="p-4 md:p-10 font-sans">
     <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-bold text-center text-orange-950 mb-10 italic">KIDDO • Gemini 3</h1>
+        <h1 class="text-3xl font-bold text-center text-orange-950 mb-10 italic tracking-tighter">KIDDO • Gemini 3</h1>
 
-        <div class="card p-6 mb-10">
-            <textarea id="userNote" class="w-full border-none focus:ring-0 text-xl placeholder-orange-200 h-28 outline-none resize-none bg-transparent" placeholder="აღწერე მომენტი..."></textarea>
+        <div class="card p-6 mb-10 border border-orange-50">
+            <textarea id="userNote" class="w-full border-none focus:ring-0 text-xl placeholder-orange-200 h-28 outline-none resize-none bg-transparent" placeholder="აღწერე დღევანდელი წამი..."></textarea>
             
-            <div id="prevBox" class="hidden mb-4 relative">
-                <button onclick="clearImg()" class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full shadow-md z-10 flex items-center justify-center font-bold">✕</button>
-                <img id="previewImg" class="w-full h-48 object-cover rounded-2xl border border-orange-50">
+            <div id="prevBox" class="hidden mb-4 relative group">
+                <button onclick="clearImg()" class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full shadow-lg z-10 flex items-center justify-center font-bold hover:bg-red-600">✕</button>
+                <img id="previewImg" class="w-full h-48 object-cover rounded-2xl border border-orange-100 shadow-sm">
             </div>
 
             <div class="flex flex-col gap-4">
                 <input type="file" id="fInp" accept="image/*" class="hidden" onchange="showPreview(this)">
-                <button onclick="document.getElementById('fInp').click()" class="text-orange-800 font-bold text-sm self-start">🖼️ ფოტოს დამატება</button>
+                <button onclick="document.getElementById('fInp').click()" class="text-orange-800 font-bold text-sm self-start hover:opacity-70 transition">🖼️ ფოტოს დამატება</button>
                 
-                <button id="mainBtn" onclick="saveToTimeline()" class="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-5 rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center gap-3">
+                <button id="mainBtn" onclick="saveStory()" class="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-5 rounded-2xl shadow-xl active:scale-95 transition flex items-center justify-center gap-3 text-lg">
                     <span id="btnText">ჩაწერე წიგნში ✨</span>
-                    <div id="loader" class="loader hidden"></div>
+                    <div id="loader" class="loader"></div>
                 </button>
             </div>
         </div>
 
-        <div id="timeline" class="space-y-8"></div>
+        <div id="timeline" class="space-y-8 pb-20"></div>
     </div>
 
     <script>
-        // გასაღები ჩასმულია ბრჭყალებში, რომ "Not Defined" შეცდომა არ ამოაგდოს
         const API_KEY = "AIzaSyDm5B64HwQ43WtoNiPEWluf0lDY75918HY";
-        let selectedImageData = null;
+        let selectedImg = null;
 
+        // ფოტოს გამოჩენა არჩევისას
         function showPreview(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    selectedImageData = e.target.result;
-                    document.getElementById('previewImg').src = e.target.result;
+                reader.onload = e => {
+                    selectedImg = e.target.result;
+                    document.getElementById('previewImg').src = selectedImg;
                     document.getElementById('prevBox').classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
+        // ფოტოს გასუფთავება
         function clearImg() {
-            selectedImageData = null;
+            selectedImg = null;
             document.getElementById('prevBox').classList.add('hidden');
             document.getElementById('fInp').value = "";
         }
 
-        async function saveToTimeline() {
+        async function saveStory() {
             const note = document.getElementById('userNote').value;
             const btn = document.getElementById('mainBtn');
-            const btnText = document.getElementById('btnText');
             const loader = document.getElementById('loader');
+            const btnText = document.getElementById('btnText');
 
             if (!note) return alert("გთხოვთ, დაწეროთ რამე...");
 
             btn.disabled = true;
+            loader.style.display = "inline-block";
             btnText.innerText = "KIDDO ფიქრობს...";
-            loader.classList.remove('hidden');
 
             try {
-                // Gemini 3 Flash Preview - სწორი v1beta მისამართით
+                // ზუსტი მისამართი Gemini 3 Flash Preview-სთვის
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`;
                 
                 const response = await fetch(url, {
@@ -83,44 +84,46 @@
                     body: JSON.stringify({
                         contents: [{ 
                             parts: [{ 
-                                text: `შენ ხარ KIDDO. გადააქციე ეს ფრაზა თბილ მოგონებად ქართულ ენაზე, მაქსიმუმ 100 სიტყვა: "${note}"` 
+                                text: `შენ ხარ KIDDO. გადააქციე ეს მოკლე ფრაზა თბილ, მხატვრულ მოგონებად ქართულ ენაზე, მაქსიმუმ 100 სიტყვა: "${note}"` 
                             }] 
                         }]
                     })
                 });
 
-                if (!response.ok) throw new Error('კავშირის შეცდომა');
+                if (!response.ok) throw new Error('API Error');
 
                 const data = await response.json();
-                const aiStory = data.candidates[0].content.parts[0].text;
+                const story = data.candidates[0].content.parts[0].text;
 
-                renderStory(aiStory, selectedImageData);
+                render(story, selectedImg);
 
+                // გასუფთავება
                 document.getElementById('userNote').value = "";
                 clearImg();
 
-            } catch (error) {
-                console.error(error);
-                alert("ბოდიში, კავშირი გაწყდა. სცადე თავიდან.");
+            } catch (err) {
+                console.error(err);
+                alert("შეცდომაა: სცადე თავიდან (შეამოწმე ინტერნეტი)");
             } finally {
                 btn.disabled = false;
+                loader.style.display = "none";
                 btnText.innerText = "ჩაწერე წიგნში ✨";
-                loader.classList.add('hidden');
             }
         }
 
-        function renderStory(text, img) {
-            const timeline = document.getElementById('timeline');
-            const date = new Date().toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' });
+        function render(txt, img) {
+            const list = document.getElementById('timeline');
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' });
             
             const html = `
-                <div class="card p-8 border-l-8 border-orange-400">
-                    <p class="text-[10px] font-bold text-orange-300 uppercase mb-4 tracking-widest">${date}</p>
-                    ${img ? `<img src="${img}" class="w-full h-56 object-cover rounded-2xl mb-6 shadow-sm">` : ''}
-                    <p class="text-orange-950 text-xl leading-relaxed font-serif italic">${text}</p>
+                <div class="card p-8 border-l-8 border-orange-400 transform transition hover:scale-[1.01]">
+                    <p class="text-[10px] font-bold text-orange-300 uppercase mb-4 tracking-widest">${dateStr}</p>
+                    ${img ? `<img src="${img}" class="w-full h-64 object-cover rounded-2xl mb-6 shadow-sm">` : ''}
+                    <p class="text-orange-950 text-xl leading-relaxed italic font-serif">${txt}</p>
                 </div>
             `;
-            timeline.insertAdjacentHTML('afterbegin', html);
+            list.insertAdjacentHTML('afterbegin', html);
         }
     </script>
 </body>
