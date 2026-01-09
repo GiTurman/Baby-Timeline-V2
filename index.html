@@ -3,122 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIDDO</title>
+    <title>KIDDO - ცხოვრების წიგნი</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #fdfaf3; font-family: sans-serif; }
-        .card { background: white; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
-        .loader { border: 2px solid #f3f3f3; border-radius: 50%; border-top: 2px solid #fb923c; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { background-color: #fdf6e3; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .page-card { background: white; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .auth-overlay { position: fixed; inset: 0; background: #fdf6e3; z-index: 1000; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
-<body class="p-4 md:p-10">
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-bold text-center text-orange-950 mb-10 italic">KIDDO</h1>
+<body class="p-4 md:p-8">
 
-        <div class="card p-6 mb-10 border border-orange-50">
-            <textarea id="userNote" class="w-full border-none focus:ring-0 text-xl placeholder-orange-200 h-28 outline-none resize-none bg-transparent" placeholder="აღწერე დღევანდელი წამი..."></textarea>
-            
-            <div id="prevBox" class="hidden mb-4 relative">
-                <button onclick="clearImg()" class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full z-10 flex items-center justify-center font-bold">✕</button>
-                <img id="previewImg" class="w-full h-48 object-cover rounded-2xl border border-orange-100">
+    <div id="loginGate" class="auth-overlay">
+        <div class="page-card p-10 w-full max-w-sm text-center mx-4">
+            <h1 class="text-3xl font-bold text-orange-900 mb-8">KIDDO</h1>
+            <input type="text" id="userInp" placeholder="შეიყვანეთ სახელი (Giorgi, Ana, Baiko)" class="w-full p-4 border border-orange-200 rounded-xl mb-4 outline-none">
+            <button onclick="checkUser()" class="w-full bg-orange-500 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition">შესვლა</button>
+        </div>
+    </div>
+
+    <div id="mainApp" class="max-w-md mx-auto hidden">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="bg-orange-200 p-2 rounded-lg">📖</div>
+                <div>
+                    <h1 class="text-2xl font-bold text-orange-900 leading-none">KIDDO</h1>
+                    <p id="userTag" class="text-sm text-orange-700"></p>
+                </div>
             </div>
+            <button onclick="localStorage.removeItem('active_kiddo_user'); location.reload();" class="text-xs text-orange-300 underline">გამოსვლა</button>
+        </div>
 
-            <div class="flex flex-col gap-4">
-                <input type="file" id="fInp" accept="image/*" class="hidden" onchange="showPreview(this)">
-                <button onclick="document.getElementById('fInp').click()" class="text-orange-800 font-bold text-sm self-start">🖼️ ფოტოს დამატება</button>
+        <h2 class="text-3xl font-serif text-orange-900 mb-2">ჩვენი დიდი თავგადასავალი</h2>
+        <p class="text-orange-800 italic mb-8">"ყოველი წამი, როდესაც შენ ჩვენს ცხოვრებაში გაჩნდი, ცალკე ისტორიის ღირსია..."</p>
+
+        <div class="page-card p-6 mb-10">
+            <textarea id="userNote" class="w-full border-none focus:ring-0 text-lg placeholder-orange-200 h-32 outline-none resize-none" placeholder="აღწერე ეს წამი მოკლედ..."></textarea>
+            
+            <div class="flex flex-col gap-4 mt-4">
+                <input type="file" id="photoInp" class="hidden" onchange="handleImg(this)">
+                <button onclick="document.getElementById('photoInp').click()" class="flex items-center gap-2 text-orange-800 font-medium border border-orange-200 py-2 px-4 rounded-full w-max">
+                    🖼️ ფოტოს დამატება
+                </button>
+                <div id="pBox" class="hidden relative"><img id="pImg" class="w-full h-40 object-cover rounded-xl"></div>
                 
-                <button id="mainBtn" onclick="saveStory()" class="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-5 rounded-2xl shadow-xl active:scale-95 transition flex items-center justify-center gap-3">
-                    <span id="btnText">ჩაწერე წიგნში ✨</span>
-                    <div id="loader" class="loader"></div>
+                <button id="saveBtn" onclick="saveMoment()" class="bg-gradient-to-r from-pink-400 to-orange-400 text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition active:scale-95">
+                    ჩაწერე წიგნში
                 </button>
             </div>
         </div>
 
-        <div id="timeline" class="space-y-8 pb-20"></div>
+        <div id="timeline" class="space-y-8 relative">
+            <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-orange-200 -z-10"></div>
+        </div>
     </div>
 
     <script>
-        const API_KEY = "AIzaSyDm5B64HwQ43WtoNiPEWluf0lDY75918HY";
-        let selectedImg = null;
+        // ახალი API გასაღები და მოდელი
+        const API_KEY = "AIzaSyD-L0vX_Xp_T7R2wE6F3G9H1J4K5L8M0N"; // აქ ჩაანაცვლე შენი ახალი გასაღებით
+        let activeUser = localStorage.getItem('active_kiddo_user');
+        let tempImg = null;
 
-        function showPreview(input) {
+        function checkUser() {
+            const val = document.getElementById('userInp').value.trim();
+            if (["Giorgi", "Ana", "Baiko"].includes(val)) {
+                localStorage.setItem('active_kiddo_user', val);
+                activeUser = val;
+                init();
+            } else {
+                alert("გთხოვთ შეიყვანოთ სწორი სახელი");
+            }
+        }
+
+        function init() {
+            if (!activeUser) return;
+            document.getElementById('loginGate').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('userTag').innerText = activeUser + "-ს გვერდი";
+            loadPosts();
+        }
+
+        if (activeUser) init();
+
+        function handleImg(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = e => {
-                    selectedImg = e.target.result;
-                    document.getElementById('previewImg').src = e.target.result;
-                    document.getElementById('prevBox').classList.remove('hidden');
+                    tempImg = e.target.result;
+                    document.getElementById('pImg').src = tempImg;
+                    document.getElementById('pBox').classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
-        function clearImg() {
-            selectedImg = null;
-            document.getElementById('prevBox').classList.add('hidden');
-            document.getElementById('fInp').value = "";
-        }
-
-        async function askAI(model, prompt) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${"AIzaSyDm5B64HwQ43WtoNiPEWluf0lDY75918HY"}`;
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            if (!res.ok) throw new Error("Retry");
-            const data = await res.json();
-            return data.candidates[0].content.parts[0].text;
-        }
-
-        async function saveStory() {
+        async function saveMoment() {
             const note = document.getElementById('userNote').value;
-            const btn = document.getElementById('mainBtn');
-            const loader = document.getElementById('loader');
-            const btnText = document.getElementById('btnText');
-
             if (!note) return;
 
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = "KIDDO ფიქრობს...";
             btn.disabled = true;
-            loader.style.display = "inline-block";
-            btnText.innerText = "KIDDO წერს...";
-
-            const prompt = `შენ ხარ KIDDO. გადააქციე ეს ფრაზა თბილ მოგონებად ქართულ ენაზე, მაქსიმუმ 100 სიტყვა: "${note}"`;
 
             try {
-                let story;
-                try {
-                    // 1. ვცდილობთ Gemini 3-ს
-                    story = await askAI('gemini-3-flash-preview', prompt);
-                } catch (e) {
-                    // 2. თუ Gemini 3-მა 404 დაწერა, ავტომატურად გადადის 1.5-ზე
-                    story = await askAI('gemini-1.5-flash', prompt);
-                }
+                // სწორი API წერტილი
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `შენ ხარ KIDDO. გადააქციე ეს მოკლე ფრაზა ლამაზ მოგონებად ქართულ ენაზე: "${note}"` }] }]
+                    })
+                });
 
-                render(story, selectedImg);
-                document.getElementById('userNote').value = "";
-                clearImg();
+                const data = await res.json();
+                const aiText = data.candidates[0].content.parts[0].text;
 
-            } catch (err) {
-                alert("სერვერი დროებით მიუწვდომელია. სცადე 1 წუთში.");
+                const dbKey = `kiddo_data_${activeUser.toLowerCase()}`;
+                const history = JSON.parse(localStorage.getItem(dbKey) || '[]');
+                history.unshift({ 
+                    id: Date.now(), 
+                    story: aiText, 
+                    img: tempImg, 
+                    date: new Date().toLocaleDateString('ka-GE') 
+                });
+                localStorage.setItem(dbKey, JSON.stringify(history));
+
+                document.getElementById('userNote').value = '';
+                tempImg = null;
+                document.getElementById('pBox').classList.add('hidden');
+                loadPosts();
+            } catch (e) {
+                alert("სერვერი დროებით მიუწვდომელია. სცადეთ 1 წუთში.");
             } finally {
+                btn.innerText = "ჩაწერე წიგნში";
                 btn.disabled = false;
-                loader.style.display = "none";
-                btnText.innerText = "ჩაწერე წიგნში ✨";
             }
         }
 
-        function render(txt, img) {
-            const list = document.getElementById('timeline');
-            const dateStr = new Date().toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' });
-            const html = `
-                <div class="card p-8 border-l-8 border-orange-400">
-                    <p class="text-[10px] font-bold text-orange-300 uppercase mb-4 tracking-widest">${dateStr}</p>
-                    ${img ? `<img src="${img}" class="w-full h-64 object-cover rounded-2xl mb-6 shadow-sm">` : ''}
-                    <p class="text-orange-950 text-xl leading-relaxed italic font-serif">${txt}</p>
-                </div>`;
-            list.insertAdjacentHTML('afterbegin', html);
+        function loadPosts() {
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '<div class="absolute left-4 top-0 bottom-0 w-0.5 bg-orange-200 -z-10"></div>';
+            
+            const dbKey = `kiddo_data_${activeUser.toLowerCase()}`;
+            const history = JSON.parse(localStorage.getItem(dbKey) || '[]');
+            
+            history.forEach(item => {
+                const html = `
+                    <div class="flex gap-6 items-start relative">
+                        <div class="w-8 h-8 rounded-full bg-orange-400 flex-shrink-0 border-4 border-white shadow-sm z-10"></div>
+                        <div class="page-card p-4 flex-1">
+                            <p class="text-xs text-orange-400 mb-1">${item.date}</p>
+                            ${item.img ? `<img src="${item.img}" class="w-full h-40 object-cover rounded-xl mb-3">` : ''}
+                            <p class="text-orange-900 leading-relaxed">${item.story}</p>
+                            <p class="text-[10px] mt-3 text-pink-400 italic">✨ AI-მ დაამუშავა</p>
+                        </div>
+                    </div>
+                `;
+                timeline.insertAdjacentHTML('beforeend', html);
+            });
         }
     </script>
 </body>
