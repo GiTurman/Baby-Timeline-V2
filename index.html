@@ -3,73 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIDDO - AI ცხოვრების წიგნი</title>
+    <title>KIDDO - AI დღიური</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #fdf6e3; font-family: sans-serif; }
-        .page-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+        .page-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; }
         .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #ff8a8a; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #previewImg { max-height: 250px; width: 100%; object-fit: cover; border-radius: 12px; }
     </style>
 </head>
-<body class="p-6">
+<body class="p-4 md:p-8">
     <div class="max-w-xl mx-auto">
-        <div class="flex justify-between items-center mb-10">
-            <div class="flex items-center gap-3">
-                <div class="bg-orange-100 p-3 rounded-2xl text-2xl">📖</div>
-                <h1 class="text-2xl font-bold text-orange-900">KIDDO</h1>
+        <div class="flex items-center gap-3 mb-8">
+            <div class="bg-orange-100 p-3 rounded-2xl text-2xl shadow-sm">📖</div>
+            <div>
+                <h1 class="text-2xl font-bold text-orange-900 tracking-tight">KIDDO</h1>
+                <p class="text-xs text-orange-600 font-medium italic">შენი შვილის ისტორია • Gemini 3</p>
             </div>
-            <button onclick="setApiKey()" class="text-[10px] bg-white px-3 py-1 rounded-full border border-orange-100 text-orange-400">🔑 API KEY</button>
         </div>
 
-        <div class="page-card p-8 mb-12 border-t-4 border-orange-400">
-            <textarea id="userNote" class="w-full border-none focus:ring-0 text-xl placeholder-orange-200 h-32 outline-none bg-transparent resize-none" placeholder="აღწერე ეს წამი მოკლედ..."></textarea>
-            <button id="mainBtn" onclick="generateWithAI()" class="w-full mt-4 bg-gradient-to-r from-pink-400 to-orange-400 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-3">
-                <span id="btnText">ჩაწერე წიგნში ✨</span>
-                <div id="loader" class="loader"></div>
-            </button>
+        <div class="page-card p-6 mb-10 border-t-4 border-orange-400">
+            <textarea id="userNote" class="w-full border-none focus:ring-0 text-xl placeholder-orange-200 h-28 outline-none bg-transparent resize-none" placeholder="აღწერე ეს წამი მოკლედ..."></textarea>
+            
+            <div id="imagePreview" class="hidden mb-4 relative group">
+                <button onclick="clearImage()" class="absolute top-2 right-2 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-black/70 transition">✕</button>
+                <img id="previewImg" src="" alt="preview">
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleImage(this)">
+                <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center gap-2 text-orange-800 font-semibold border border-orange-100 py-3 rounded-xl hover:bg-orange-50 transition bg-white shadow-sm">
+                    🖼️ ფოტოს დამატება
+                </button>
+                <button id="mainBtn" onclick="generateWithAI()" class="bg-gradient-to-r from-pink-400 to-orange-400 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-all">
+                    <span id="btnText">ჩაწერე წიგნში ✨</span>
+                    <div id="loader" class="loader"></div>
+                </button>
+            </div>
         </div>
 
-        <div id="timeline" class="space-y-6"></div>
+        <div id="timeline" class="space-y-8"></div>
     </div>
 
     <script>
-        function setApiKey() {
-            const key = prompt("AIzaSyDm5B64HwQ43WtoNiPEWluf0lDY75918HY");
-            if (key) localStorage.setItem('gemini_key', key);
+        // შენი API გასაღები უკვე ჩაწერილია
+        const MY_API_KEY = "AIzaSyDm5B64HwQ43WtoNiPEWluf0lDY75918HY";
+        let selectedImageBase64 = null;
+
+        function handleImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedImageBase64 = e.target.result;
+                    document.getElementById('previewImg').src = e.target.result;
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function clearImage() {
+            selectedImageBase64 = null;
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('fileInput').value = "";
         }
 
         async function generateWithAI() {
             const note = document.getElementById('userNote').value;
-            const apiKey = localStorage.getItem('gemini_key');
             const btnText = document.getElementById('btnText');
             const loader = document.getElementById('loader');
 
-            if (!apiKey) return alert("ჩაწერე API Key!");
-            if (!note) return;
+            if (!note && !selectedImageBase64) return alert("დაწერე რამე ან ატვირთე ფოტო!");
 
-            btnText.innerText = 'AI ფიქრობს...';
+            btnText.innerText = 'KIDDO ფიქრობს...';
             loader.style.display = 'block';
 
             try {
-                // შეცვლილი მისამართი: v1 და gemini-1.5-flash
-                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // ვიყენებთ v1 მისამართს და gemini-1.5-flash მოდელს
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${MY_API_KEY}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `შენ ხარ ემოციური დღიურის ასისტენტი. გადააქციე ეს მოკლე ფრაზა თბილ მოგონებად ქართულ ენაზე: "${note}"` }] }]
+                        contents: [{ 
+                            parts: [{ 
+                                text: `შენ ხარ ემოციური დღიურის ასისტენტი. მომხმარებელი გიწერს მოკლე ფრაზას შვილის შესახებ. გადააქციე ის თბილ, ლიტერატურულ ისტორიად ქართულ ენაზე (2-3 წინადადება). ფრაზა: "${note}"` 
+                            }] 
+                        }]
                     })
                 });
 
                 const data = await response.json();
-                
                 if (data.error) throw new Error(data.error.message);
 
                 const aiStory = data.candidates[0].content.parts[0].text;
-                addStory(note, aiStory);
+                addStoryToUI(aiStory, selectedImageBase64);
+                
+                // გასუფთავება
                 document.getElementById('userNote').value = '';
+                clearImage();
             } catch (error) {
                 alert("შეცდომა: " + error.message);
                 console.error(error);
@@ -79,12 +113,19 @@
             }
         }
 
-        function addStory(original, ai) {
+        function addStoryToUI(story, image) {
             const timeline = document.getElementById('timeline');
+            const date = new Date().toLocaleDateString('ka-GE', { day: 'numeric', month: 'long' });
+            
+            const imageHtml = image ? `<img src="${image}" class="w-full h-56 object-cover rounded-xl mb-4 shadow-sm">` : '';
+            
             const html = `
-                <div class="page-card p-6 border-l-4 border-pink-400 animate-fade-in">
-                    <p class="text-xs text-orange-400 mb-2">${new Date().toLocaleDateString('ka-GE')}</p>
-                    <p class="text-orange-950 font-serif text-lg font-medium">${ai}</p>
+                <div class="page-card p-6 border-l-8 border-pink-400 animate-fade-in mb-6">
+                    <div class="mb-3">
+                        <span class="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-md tracking-widest uppercase">${date}</span>
+                    </div>
+                    ${imageHtml}
+                    <p class="text-orange-950 font-serif text-lg leading-relaxed font-medium">${story}</p>
                 </div>
             `;
             timeline.insertAdjacentHTML('afterbegin', html);
